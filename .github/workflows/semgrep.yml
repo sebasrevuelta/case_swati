@@ -12,13 +12,22 @@ on:
   - cron: 25 13 * * *
 name: Semgrep
 jobs:
-  semgrep:
-    name: semgrep/ci
-    runs-on: ubuntu-20.04
+  semgrep-daily:
+    name: Daily Semgrep SAST full repo scan
+    runs-on: ubuntu-latest
+    container:
+      image: semgrep/semgrep:latest
+    strategy:
+      matrix:
+        # See https://docs.github.com/en/actions/using-jobs/using-a-matrix-for-your-jobs#example-using-a-single-dimension-matrix
+        # Semgrep cannot handle scanning the full repo it returns 5xx errors
+        glob: ["app/[a-e]*/**", "app/[f-j]*/**", "app/[k-o]*/**", "app/[p-t]*/**", "app/[u-z]*/**"]
     env:
       SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
-    container:
-      image: returntocorp/semgrep
     steps:
-    - uses: actions/checkout@v3
-    - run: semgrep ci
+      # Note, intentionally no ref argument here, so checkout action will use the Default branch
+      - uses: actions/checkout@v4
+      - run: |
+          export SEMGREP_REPO_DISPLAY_NAME="${{ matrix.glob }}"
+          semgrep ci --code --include="${{ matrix.glob }}"
+
